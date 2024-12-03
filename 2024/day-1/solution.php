@@ -35,6 +35,7 @@ class Solution extends AdventOfCode\Solution
                 if ($value1 === $value2) {
                     return $carry + 1;
                 }
+
                 return $carry;
             }, 0);
             $score += $count * $value1;
@@ -42,8 +43,6 @@ class Solution extends AdventOfCode\Solution
 
         return $score;
     }
-
-
 
     private function initLists(array $input)
     {
