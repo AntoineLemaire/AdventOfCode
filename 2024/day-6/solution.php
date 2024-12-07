@@ -2,145 +2,114 @@
 
 class Solution extends AdventOfCode\Solution
 {
-    private const DIRECTIONS = ['top', 'right', 'down', 'left'];
+    private const NEXT_DIRECTIONS = [
+        'top' => 'right',
+        'right' => 'down',
+        'down' => 'left',
+        'left' => 'top',
+    ];
 
     private ?string $initialDirection = null;
     private array $initialMap = [];
-    private array $visitedDirectedPositions = [];
-    private array $visitedPositions = [];
+    private ?int $initialGuardX = null;
+    private ?int $initialGuardY = null;
+
     private array $map = [];
-    private string $direction = 'top';
+    private array $visitedPositions = [];
+
+    private string $guardDirection = 'top';
+    private ?int $guardX = null;
+    private ?int $guardY = null;
 
     public function first()
     {
         $input = $this->input->load();
-
         $this->initMap($input);
-        [$x, $y] = $this->getSoldierPosition();
-        $this->visitedPositions[] = "$x,$y";
+        $this->visitedPositions[] = [$this->guardX, $this->guardY];
 
         try {
             while (true) {
-                [$x, $y] = $this->moveSoldier();
+                $this->moveGuard();
 
-                if (!in_array("$x,$y", $this->visitedPositions)) {
-                    //            dump("Soldier move to $nx, $ny");
-                    $this->visitedPositions[] = "$x,$y";
+                if (!in_array([$this->guardX, $this->guardY], $this->visitedPositions)) {
+                    $this->visitedPositions[] = [$this->guardX, $this->guardY];
                 }
-
             }
-        } catch (Exception $e) {
-            // Soldier reach end of the map
+        } catch (LeftMapException $e) {
+            // Guard reach end of the map
         }
 
         return count($this->visitedPositions);
     }
 
+    // It takes a while (~800s), but it work...
     public function second()
     {
-        throw new AdventOfCode\Exception\NotImplementedException('This solution gave wrong answer');
-
         $input = $this->input->load();
 
         $this->initMap($input);
-        [$initialX, $initialY] = $this->getSoldierPosition();
-        //        dump([$x, $y]);
-        $this->initialDirection = $this->direction;
+        $this->initialDirection = $this->guardDirection;
         $this->initialMap = $this->map;
+        $this->initialGuardX = $this->guardX;
+        $this->initialGuardY = $this->guardY;
 
         $loopCount = 0;
 
-        // Run it one time to get all positions where we could put an obstruction
-        try {
-            while (true) {
-                [$x, $y] = $this->moveSoldier();
-
-                if (!in_array("$x,$y", $this->visitedPositions)) {
-                    $this->visitedPositions[] = "$x,$y";
-                }
-            }
-        } catch (Exception $e) {
-            // Soldier reach end of the map
-        }
-
+        // We try to add a obstruction on each every position the guard already walked in the first step
         for ($i = 0; $i < count($this->visitedPositions); ++$i) {
-            [$x, $y] = explode(',', $this->visitedPositions[$i]);
-            // Avoid initial soldier place or already existing blocs
-            if ('.' === $this->initialMap[$y][$x]) {
-                // Reset the map
-                $this->map = $this->initialMap;
-                $this->direction = $this->initialDirection;
-                $this->visitedDirectedPositions = [];
-                // Add obstruction
-                $this->map[$y][$x] = 'O';
-                try {
-                    while (true) {
-                        $this->moveSoldier();
+            [$x, $y] = $this->visitedPositions[$i];
+
+            $this->resetMap();
+            $visited = [];
+
+            // Add obstruction
+            $this->map[$y][$x] = '#';
+
+            try {
+                while (true) {
+                    $this->moveGuard();
+
+                    // If the guard walked on the same position with the same direction, he's in a loop
+                    if (in_array([$this->guardX, $this->guardY, $this->guardDirection], $visited)) {
+                        ++$loopCount;
+                        break;
+                    } else {
+                        $visited[] = [$this->guardX, $this->guardY, $this->guardDirection];
                     }
-                } catch (LeftMapException $e) {
-                    // Soldier reach end of the map
-                } catch (LoopException $e) {
-                    ++$loopCount;
+
                 }
+            } catch (LeftMapException $e) {
+                // Guard reach end of the map
             }
         }
 
         return $loopCount;
     }
 
-    private function moveSoldier(): array
+    private function resetMap(): void
     {
-        [$x, $y] = $this->getSoldierPosition();
-        [$nx, $ny] = $this->getNextPosition($x, $y);
+        // Reset the map
+        $this->map = $this->initialMap;
+        $this->guardDirection = $this->initialDirection;
+        $this->guardX = $this->initialGuardX;
+        $this->guardY = $this->initialGuardY;
+    }
 
-        //        if ("$x,$y" === "4,6") {
-        //            dump("COUCOU2");
-        //            exit;
-        //        }
+    private function moveGuard(): void
+    {
+        [$nx, $ny] = $this->getNextPosition($this->guardX, $this->guardY, $this->guardDirection);
 
         if (!isset($this->map[$ny][$nx])) {
-            throw new LeftMapException('Soldier has left the map');
+            throw new LeftMapException('Guard has left the map');
         }
 
-        // Collision
-        if (in_array($this->map[$ny][$nx], ['#', 'O'])) {
-            // Change direction
-            $this->direction = self::DIRECTIONS[
-                (array_search($this->direction, self::DIRECTIONS) + 1) % 4
-            ];
-
-            if (in_array("$x,$y," . $this->direction, $this->visitedDirectedPositions)) {
-                // It's a loop!
-                //                $this->displayMap($this->map);
-                //                                dump('LOOP1');
-                //                exit;
-                throw new LoopException();
-            }
-            [$nx, $ny] = $this->getNextPosition($x, $y);
+        if ('#' === $this->map[$ny][$nx]) {
+            // Guard change direction if next position is an obstruction, and don't move this time
+            $this->guardDirection = self::NEXT_DIRECTIONS[$this->guardDirection];
         } else {
-            //            dump($this->visitedDirectedPositions);
-            if (in_array("$nx,$ny," . $this->direction, $this->visitedDirectedPositions)) {
-                // It's a loop!
-                //                                dump('LOOP2');
-                //                exit;
-                throw new LoopException();
-            }
+            $this->guardX = $nx;
+            $this->guardY = $ny;
         }
-
-        $this->map[$y][$x] = '.';
-        $this->map[$ny][$nx] = match ($this->direction) {
-            'top' => '^',
-            'left' => '<',
-            'down' => 'v',
-            'right' => '>',
-        };
-
-        if (!in_array("$nx,$ny," . $this->direction, $this->visitedDirectedPositions)) {
-            //            dump("Soldier move to $nx, $ny");
-            $this->visitedDirectedPositions[] = "$nx,$ny," . $this->direction;
-        }
-
-        return [$nx, $ny];
     }
 
     private function displayMap(array $map)
@@ -154,16 +123,16 @@ class Solution extends AdventOfCode\Solution
         echo "***********************\n";
     }
 
-    private function getNextPosition(int $x, int $y)
+    private function getNextPosition(int $x, int $y, $direction)
     {
-        $nx = match ($this->direction) {
+        $nx = match ($direction) {
             'top' => $x,
             'right' => $x + 1,
             'down' => $x,
             'left' => $x - 1,
             default => $x,
         };
-        $ny = match ($this->direction) {
+        $ny = match ($direction) {
             'top' => $y - 1,
             'right' => $y,
             'down' => $y + 1,
@@ -177,45 +146,24 @@ class Solution extends AdventOfCode\Solution
     private function initMap(array $lines): void
     {
         $this->map = [];
-        foreach ($lines as $line) {
-            $row = str_split($line);
+        for ($y = 0; $y < count($lines); ++$y) {
+            $row = str_split($lines[$y]);
             $this->map[] = $row;
-            foreach ($row as $char) {
-                if (in_array($char, ['^', 'v', '>', '<'])) {
-                    $this->direction = match ($char) {
+            for ($x = 0; $x < count($row); ++$x) {
+                if (in_array($row[$x], ['^', 'v', '>', '<'])) {
+                    $this->guardDirection = match ($row[$x]) {
                         '^' => 'top',
                         '<' => 'left',
                         'v' => 'down',
                         '>' => 'right',
                     };
+                    $this->guardX = $x;
+                    $this->guardY = $y;
                 }
             }
         }
-    }
-
-    private function getSoldierPosition(): array
-    {
-        for ($x = 0; $x < $this->getMapWidth(); ++$x) {
-            for ($y = 0; $y < $this->getMapHeight(); ++$y) {
-                if (in_array($this->map[$y][$x], ['^', 'v', '>', '<'])) {
-                    return [$x, $y];
-                }
-            }
-        }
-
-        throw new InvalidArgumentException('Soldier not found');
-    }
-
-    private function getMapWidth(): int
-    {
-        return count($this->map);
-    }
-
-    private function getMapHeight(): int
-    {
-        return isset($this->map[0]) ? count($this->map[0]) : 0;
     }
 }
 
-class LoopException extends Exception {}
+
 class LeftMapException extends Exception {}
