@@ -19,9 +19,9 @@ class Solution extends AdventOfCode\Solution
     private function doFileOperations(array $input, array $operators)
     {
         $calibrationResult = 0;
-        foreach ($input as $line) {
-            $expected = (int) explode(': ', $line)[0];
-            $numbers = explode(' ', explode(': ', $line)[1]);
+        foreach ($input as $row) {
+            $expected = (int) explode(': ', $row)[0];
+            $numbers = explode(' ', explode(': ', $row)[1]);
 
             try {
                 $this->doRowOperations($numbers, $expected, $operators);

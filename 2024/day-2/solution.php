@@ -47,11 +47,11 @@ class Solution extends AdventOfCode\Solution
     {
         $list = [];
         // Init the reports list from input
-        foreach ($input as $line) {
-            if (empty($line)) {
+        foreach ($input as $row) {
+            if (empty($row)) {
                 continue;
             }
-            $list[] = explode(' ', $line);
+            $list[] = explode(' ', $row);
         }
 
         return $list;

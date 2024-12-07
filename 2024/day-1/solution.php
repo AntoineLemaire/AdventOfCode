@@ -50,11 +50,11 @@ class Solution extends AdventOfCode\Solution
         $list2 = [];
 
         // Init the two lists from input
-        foreach ($input as $line) {
-            if (empty($line)) {
+        foreach ($input as $row) {
+            if (empty($row)) {
                 continue;
             }
-            $explode = explode('   ', $line);
+            $explode = explode('   ', $row);
             $list1[] = $explode[0];
             $list2[] = $explode[1];
         }

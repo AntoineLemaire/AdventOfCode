@@ -51,10 +51,10 @@ class Solution extends AdventOfCode\Solution
         return $count;
     }
 
-    private function getColumsAsString(array $lines)
+    private function getColumsAsString(array $rows)
     {
         $columns = [];
-        foreach ($lines as $line) {
+        foreach ($rows as $line) {
             $chars = str_split($line);
             for ($i = 0; $i < count($chars); ++$i) {
                 if (!array_key_exists($i, $columns)) {
@@ -71,14 +71,14 @@ class Solution extends AdventOfCode\Solution
         }, $columns);
     }
 
-    private function getDiagonalsAsString(array $lines)
+    private function getDiagonalsAsString(array $rows)
     {
         $dataset = array_map(function ($line) {
             return str_split($line);
-        }, $lines);
+        }, $rows);
 
-        $l = strlen($lines[0]);
-        $h = count($lines);
+        $l = strlen($rows[0]);
+        $h = count($rows);
 
 
         $diagonalsLR = [];

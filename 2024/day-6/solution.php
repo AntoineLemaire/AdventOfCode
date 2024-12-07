@@ -143,11 +143,11 @@ class Solution extends AdventOfCode\Solution
         return [$nx, $ny];
     }
 
-    private function initMap(array $lines): void
+    private function initMap(array $rows): void
     {
         $this->map = [];
-        for ($y = 0; $y < count($lines); ++$y) {
-            $row = str_split($lines[$y]);
+        for ($y = 0; $y < count($rows); ++$y) {
+            $row = str_split($rows[$y]);
             $this->map[] = $row;
             for ($x = 0; $x < count($row); ++$x) {
                 if (in_array($row[$x], ['^', 'v', '>', '<'])) {
