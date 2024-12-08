@@ -3,7 +3,9 @@
 class Solution extends AdventOfCode\Solution
 {
     private array $matrix = [];
+    /** @var array|Antenna[] */
     private array $antennas = [];
+    /** @var array|Coordinate[] */
     private array $antinodes = [];
 
     public function first()
@@ -27,7 +29,10 @@ class Solution extends AdventOfCode\Solution
         foreach ($this->antennas as $antenna1) {
             foreach ($this->antennas as $antenna2) {
                 if ($antenna1->isCompatible($antenna2)) {
-                    $antinodes = $antenna1->getAntinodesCoordinates($antenna2);
+                    $antinodes = array_merge(
+                        $antenna1->coordinate->getNextAntinodesCoordinates($antenna2->coordinate, $this->matrix),
+                        $antenna2->coordinate->getNextAntinodesCoordinates($antenna1->coordinate, $this->matrix)
+                    );
                     foreach ($antinodes as $antinode) {
                         $this->addAntinodeToMatrix($antinode);
                     }
@@ -45,7 +50,34 @@ class Solution extends AdventOfCode\Solution
             return str_split($row);
         }, $input);
 
-        throw new AdventOfCode\Exception\NotImplementedException();
+        // Find antennas
+        for ($y = 0; $y < count($this->matrix); ++$y) {
+            for ($x = 0; $x < count($this->matrix[$y]); ++$x) {
+                $cell = $this->matrix[$y][$x];
+                if ('.' !== $cell) {
+                    $this->antennas[] = new Antenna($cell, new Coordinate($x, $y));
+                    $antinode = new Coordinate($x, $y);
+                    $this->addAntinodeToMatrix($antinode);
+                }
+            }
+        }
+
+        // Find couples of antennas
+        foreach ($this->antennas as $antenna1) {
+            foreach ($this->antennas as $antenna2) {
+                if ($antenna1->isCompatible($antenna2)) {
+                    $antinodes = array_merge(
+                        $antenna1->coordinate->getNextAntinodesCoordinates($antenna2->coordinate, $this->matrix, true),
+                        $antenna2->coordinate->getNextAntinodesCoordinates($antenna1->coordinate, $this->matrix, true)
+                    );
+                    foreach ($antinodes as $antinode) {
+                        $this->addAntinodeToMatrix($antinode);
+                    }
+                }
+            }
+        }
+
+        return count($this->antinodes);
     }
 
     private function addAntinodeToMatrix(Coordinate $coordinate)
@@ -65,17 +97,6 @@ class Solution extends AdventOfCode\Solution
             $this->antinodes[] = $coordinate;
         }
     }
-
-    private function displayMap(array $map)
-    {
-        foreach ($map as $row) {
-            foreach ($row as $char) {
-                echo $char;
-            }
-            echo "\n";
-        }
-        echo "***********************\n";
-    }
 }
 
 class Antenna
@@ -90,27 +111,8 @@ class Antenna
         return $this->type === $antenna->type
             && !$this->coordinate->isEqual($antenna->coordinate);
     }
-
-    /**
-     * @return Coordinate[]
-     */
-    public function getAntinodesCoordinates(Antenna $antenna): array
-    {
-        $diffX = abs($antenna->coordinate->x - $this->coordinate->x);
-        $diffY = abs($antenna->coordinate->y - $this->coordinate->y);
-
-        return [
-            new Coordinate(
-                $this->coordinate->x < $antenna->coordinate->x ? $this->coordinate->x - $diffX : $this->coordinate->x + $diffX,
-                $this->coordinate->y < $antenna->coordinate->y ? $this->coordinate->y - $diffY : $this->coordinate->y + $diffY,
-            ),
-            new Coordinate(
-                $this->coordinate->x < $antenna->coordinate->x ? $antenna->coordinate->x + $diffX : $antenna->coordinate->x - $diffX,
-                $this->coordinate->y < $antenna->coordinate->y ? $antenna->coordinate->y + $diffY : $antenna->coordinate->y - $diffY,
-            ),
-        ];
-    }
 }
+
 class Coordinate
 {
     public function __construct(
@@ -126,5 +128,32 @@ class Coordinate
     public function isOutsideMatrix(array $matrix): bool
     {
         return $this->x < 0 || $this->y < 0 || $this->y > count($matrix) || $this->x > count($matrix[0]);
+    }
+
+    /**
+     * @return Coordinate[]
+     */
+    public function getNextAntinodesCoordinates(Coordinate $coordinate, array $matrix, bool $deep = false): array
+    {
+        $diffX = abs($coordinate->x - $this->x);
+        $diffY = abs($coordinate->y - $this->y);
+
+        $antinode = new Coordinate(
+            $this->x < $coordinate->x ? $this->x - $diffX : $this->x + $diffX,
+            $this->y < $coordinate->y ? $this->y - $diffY : $this->y + $diffY,
+        );
+
+        if ($antinode->isOutsideMatrix($matrix)) {
+            return [];
+        }
+
+        $antinodes = [$antinode];
+
+        if (true === $deep) {
+            $deepAntinodes = $antinode->getNextAntinodesCoordinates($this, $matrix, true);
+            $antinodes = array_merge($antinodes, $deepAntinodes);
+        }
+
+        return $antinodes;
     }
 }
