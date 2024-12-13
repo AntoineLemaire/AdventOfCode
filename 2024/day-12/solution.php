@@ -16,6 +16,9 @@ class Solution extends AdventOfCode\Solution
     private int $height = 0;
     private int $width = 0;
 
+    /**
+     * Excepted 1930
+     */
     public function first()
     {
         $input = $this->input->load();
