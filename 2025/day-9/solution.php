@@ -1,5 +1,7 @@
 <?php
 
+use Symfony\Component\Console\Helper\ProgressBar;
+
 class Solution extends AdventOfCode\Solution
 {
     public function first()
@@ -28,15 +30,21 @@ class Solution extends AdventOfCode\Solution
         $input = $this->input->load();
 
         $points = [];
+
         foreach ($input as $line) {
             $coordinates = explode(',', $line);
             $points[] = $coordinates;
         }
+        $this->output->writeln('');
 
-        $map = $this->makeMap($points);
-        $this->displayMap($map);
+//        $map = $this->makeMap($points);
+//        $this->displayMap($map);
 
         $largestArea = 0;
+        $progressBar = new ProgressBar($this->output, count($points));
+        $progressBar->setFormat('debug');
+        $progressBar->start();
+
         foreach ($points as $redTile) {
             foreach ($points as $redTile2) {
                 if ($redTile === $redTile2) {
@@ -52,14 +60,20 @@ class Solution extends AdventOfCode\Solution
                     $boundPoint = $points[$i > 0 ? ($i - 1) % count($points) : count($points) - 1];
                     $boundPoint2 = $points[$i];
 
-                    if ($this->isSegmentsIntersect($boundPoint, $boundPoint2, $redTile, $redTile2)) {
+                    // Search intersect between boundary segments
+                    // & all segments of the rectangle and the diagonals
+                    if (
+                        // Rectangle
+                        $this->isSegmentsIntersect($boundPoint, $boundPoint2, $redTile, $reverseReTile2) ||
+                        $this->isSegmentsIntersect($boundPoint, $boundPoint2, $reverseReTile2, $redTile2) ||
+                        $this->isSegmentsIntersect($boundPoint, $boundPoint2, $redTile2, $reverseReTile) ||
+                        $this->isSegmentsIntersect($boundPoint, $boundPoint2, $reverseReTile, $redTile) ||
+                        // Diagonals
+                        $this->isSegmentsIntersect($boundPoint, $boundPoint2, $redTile, $redTile2) ||
+                        $this->isSegmentsIntersect($boundPoint, $boundPoint2, $reverseReTile, $reverseReTile2)
+                    ) {
                         $intersect = true;
 
-                        break;
-                    }
-
-                    if ($this->isSegmentsIntersect($boundPoint, $boundPoint2, $reverseReTile, $reverseReTile2)) {
-                        $intersect = true;
                         break;
                     }
                 }
@@ -67,9 +81,12 @@ class Solution extends AdventOfCode\Solution
                     $largestArea = $largestArea < $area ? $area : $largestArea;
                 }
             }
+            $progressBar->advance();
         }
+        $progressBar->finish();
+        $this->output->writeln('');
 
-        throw new Exception('Failed');
+        return $largestArea;
     }
 
     private function getArea($a, $b): int
